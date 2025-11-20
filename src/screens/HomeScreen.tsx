@@ -9,7 +9,7 @@ interface Props {
 export const HomeScreen: React.FC<Props> = () => {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>hello wishlist</Text>
+      <Text style={styles.text}>hello alarms next</Text>
     </View>
   );
 };
