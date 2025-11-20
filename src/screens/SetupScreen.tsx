@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import WheelPicker from 'react-native-wheely';
+import { triggerTestAlarm } from '../services/alarmService';
 
 interface Props {
   onBack: () => void;
+  onTestAlarm?: (time: string) => void;
 }
 
 // Generate time options from 4:00 AM to 9:00 AM in 5-minute increments
@@ -81,11 +83,35 @@ const calculateFutureTime = (selectedTime: string): string => {
   return `${displayHour}:${displayMinute} ${displayPeriod}`;
 };
 
-export const SetupScreen: React.FC<Props> = ({ onBack }) => {
+export const SetupScreen: React.FC<Props> = ({ onBack, onTestAlarm }) => {
   const timeOptions = useMemo(() => generateTimeOptions(), []);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [isTestingAlarm, setIsTestingAlarm] = useState(false);
   const selectedTime = timeOptions[selectedIndex];
   const futureTime = useMemo(() => calculateFutureTime(selectedTime), [selectedTime]);
+
+  const handleTestAlarm = async () => {
+    setIsTestingAlarm(true);
+    try {
+      const success = await triggerTestAlarm();
+      if (success) {
+        // Trigger alarm screen directly with current time
+        if (onTestAlarm) {
+          onTestAlarm(selectedTime);
+        } else {
+          // Fallback: Show alert
+          Alert.alert('Test Alarm', 'Test alarm triggered!');
+        }
+      } else {
+        Alert.alert('Permission Required', 'Please grant notification permissions to test the alarm.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to trigger test alarm. Please try again.');
+      console.error('Error testing alarm:', error);
+    } finally {
+      setIsTestingAlarm(false);
+    }
+  };
 
   return (
     <LinearGradient
@@ -116,9 +142,21 @@ export const SetupScreen: React.FC<Props> = ({ onBack }) => {
         />
       </View>
 
-      <TouchableOpacity style={styles.backButton} onPress={onBack}>
-        <Text style={styles.backButtonText}>Back</Text>
-      </TouchableOpacity>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity 
+          style={[styles.testButton, isTestingAlarm && styles.testButtonDisabled]} 
+          onPress={handleTestAlarm}
+          disabled={isTestingAlarm}
+        >
+          <Text style={styles.testButtonText}>
+            {isTestingAlarm ? 'Testing...' : 'Test'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+      </View>
     </LinearGradient>
   );
 };
@@ -175,13 +213,36 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   selectedIndicator: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    borderWidth: 0,
+    borderColor: 'transparent',
+  },
+  buttonContainer: {
+    width: '100%',
+    maxWidth: 300,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  testButton: {
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    backgroundColor: '#34C759',
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+    marginBottom: 15,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  testButtonDisabled: {
+    backgroundColor: '#6C757D',
+    opacity: 0.6,
+  },
+  testButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   backButton: {
-    marginTop: 20,
     paddingHorizontal: 20,
     paddingVertical: 10,
     backgroundColor: '#007AFF',
